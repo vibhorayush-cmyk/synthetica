@@ -1,0 +1,12 @@
+.git
+.venv
+app/.venv
+app/.venv-1
+frontend/node_modules
+frontend/.next
+exports
+history
+templates
+__pycache__
+.pytest_cache
+.env

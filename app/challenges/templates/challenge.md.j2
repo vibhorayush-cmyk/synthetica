@@ -1,0 +1,70 @@
+# {{ pack.title }}
+
+## Business Story
+
+{{ pack.business_story }}
+
+## Business Problem
+
+{{ pack.business_problem }}
+
+## Difficulty and Time
+
+- Difficulty: {{ pack.difficulty }}
+- Estimated completion time: {{ pack.estimated_completion_time }}
+- Scenario: {{ pack.scenario.replace('_', ' ').title() }}
+
+## Recommended Tools
+{% for tool in pack.recommended_tools %}
+- {{ tool }}
+{% endfor %}
+
+## KPIs
+{% for item in pack.kpis %}
+- {{ item }}
+{% endfor %}
+
+## Dashboard Requirements
+{% for item in pack.dashboard_requirements %}
+- {{ item }}
+{% endfor %}
+
+## SQL Questions
+{% for item in pack.sql_questions %}
+{{ loop.index }}. {{ item }}
+{% endfor %}
+
+## Excel Tasks
+{% for item in pack.excel_questions %}
+- {{ item }}
+{% endfor %}
+
+## Python Tasks
+{% for item in pack.python_questions %}
+- {{ item }}
+{% endfor %}
+
+## Power BI Tasks
+{% for item in pack.powerbi_tasks %}
+- {{ item }}
+{% endfor %}
+
+## Tableau Tasks
+{% for item in pack.tableau_tasks %}
+- {{ item }}
+{% endfor %}
+
+## Machine Learning Ideas
+{% for item in pack.machine_learning_ideas %}
+- {{ item }}
+{% endfor %}
+
+## Deliverables
+{% for item in pack.deliverables %}
+- {{ item }}
+{% endfor %}
+
+## Success Criteria
+{% for item in pack.success_criteria %}
+- {{ item }}
+{% endfor %}

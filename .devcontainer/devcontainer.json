@@ -1,0 +1,12 @@
+{
+  "name": "Synthetic Analytics Platform",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "api",
+  "workspaceFolder": "/workspaces/synthetic-analytics-platform",
+  "forwardPorts": [8000, 3000],
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python", "ms-azuretools.vscode-docker", "dbaeumer.vscode-eslint"]
+    }
+  }
+}

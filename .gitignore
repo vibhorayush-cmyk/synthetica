@@ -1,0 +1,25 @@
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+
+# Environment
+.env
+.env.local
+
+# Generated files
+exports/
+downloads/
+*.zip
+
+# Separate project
+border-intelligence/
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+
+# macOS
+.DS_Store
+.coverage
+*.tsbuildinfo
