@@ -1,119 +1,99 @@
-"""HTTP routes for template management and generation."""
+"""Authenticated routes for user-owned dataset templates."""
 
-from __future__ import annotations
-
+import asyncio
 from pathlib import Path
+from time import perf_counter
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Request, status
 
+from app.auth.dependencies import CurrentUser, DbSession
+from app.history.database_service import AsyncHistoryService
 from app.models.generation import GenerateResponse
-from app.templates.repository import JsonTemplateRepository
+from app.services.generation_service import get_generation_service
+from app.templates.database_service import AsyncTemplateService
 from app.templates.schemas import TemplateCreate, TemplateResponse, TemplateUpdate
-from app.templates.service import TemplateService
 
 
 router = APIRouter(prefix="/templates", tags=["templates"])
 
 
-def get_template_service() -> TemplateService:
-    """Create a template service with the JSON repository."""
-    return TemplateService(JsonTemplateRepository())
-
-
 @router.get("", response_model=list[TemplateResponse])
-async def list_templates(
-    service: TemplateService = Depends(get_template_service),
-) -> list[TemplateResponse]:
-    """Return all templates."""
-    return [
-        TemplateResponse.from_model(template) for template in service.list_templates()
-    ]
+async def list_templates(user: CurrentUser, session: DbSession) -> list[TemplateResponse]:
+    return await AsyncTemplateService(session).list(user.id)
 
 
 @router.get("/{template_id}", response_model=TemplateResponse)
-async def get_template(
-    template_id: str, service: TemplateService = Depends(get_template_service)
-) -> TemplateResponse:
-    """Return one template by id."""
+async def get_template(template_id: UUID, user: CurrentUser, session: DbSession) -> TemplateResponse:
     try:
-        template = service.get_template(template_id)
+        return await AsyncTemplateService(session).get(template_id, user.id)
     except ValueError as error:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(error)
-        ) from error
-    return TemplateResponse.from_model(template)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
 
 
 @router.post("", response_model=TemplateResponse, status_code=status.HTTP_201_CREATED)
 async def create_template(
-    payload: TemplateCreate, service: TemplateService = Depends(get_template_service)
+    payload: TemplateCreate, user: CurrentUser, session: DbSession
 ) -> TemplateResponse:
-    """Create a template."""
     try:
-        template = service.create_template(payload)
+        return await AsyncTemplateService(session).create(user.id, payload)
     except ValueError as error:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
-        ) from error
-    return TemplateResponse.from_model(template)
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)) from error
 
 
 @router.put("/{template_id}", response_model=TemplateResponse)
 async def update_template(
-    template_id: str,
-    payload: TemplateUpdate,
-    service: TemplateService = Depends(get_template_service),
+    template_id: UUID, payload: TemplateUpdate, user: CurrentUser, session: DbSession
 ) -> TemplateResponse:
-    """Update a template."""
     try:
-        template = service.update_template(template_id, payload)
+        return await AsyncTemplateService(session).update(template_id, user.id, payload)
     except ValueError as error:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(error)
-        ) from error
-    return TemplateResponse.from_model(template)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
 
 
 @router.delete("/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_template(
-    template_id: str, service: TemplateService = Depends(get_template_service)
-) -> None:
-    """Delete a template."""
-    service.delete_template(template_id)
+async def delete_template(template_id: UUID, user: CurrentUser, session: DbSession) -> None:
+    try:
+        await AsyncTemplateService(session).delete(template_id, user.id)
+    except ValueError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
 
 
 @router.post("/generate/from-template/{template_id}", response_model=GenerateResponse)
 async def generate_from_template(
-    template_id: str,
-    request: Request,
-    service: TemplateService = Depends(get_template_service),
+    template_id: UUID, request: Request, user: CurrentUser, session: DbSession
 ) -> GenerateResponse:
-    """Generate a dataset bundle from a saved template."""
+    """Generate a user-owned dataset from one of the user's templates."""
+    started = perf_counter()
+    service = AsyncTemplateService(session)
     try:
-        generated = service.generate_from_template(template_id)
+        payload = await service.generate_request(template_id, user.id)
+        generated = await asyncio.to_thread(get_generation_service().generate, payload)
     except ValueError as error:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(error)
-        ) from error
-
-    download_url = (
-        str(
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    response = GenerateResponse(
+        download_url=str(
             request.url_for(
-                "download_export", filename=Path(generated.download_url).name
+                "download_export", filename=Path(generated.export.zip_path).name
             )
-        )
-        if generated.download_url
-        else ""
-    )
-    return GenerateResponse(
-        download_url=download_url,
-        generated_files=generated.generated_files,
-        row_counts=generated.row_counts,
-        generated_at=generated.generated_at,
+        ),
+        generated_files=[Path(path).name for path in generated.export.files],
+        row_counts={name: len(table) for name, table in generated.tables.items()},
+        generated_at=generated.export.generated_at,
         scenario=generated.scenario,
         quality=generated.quality,
-        challenge_title=generated.challenge_title,
-        difficulty=generated.difficulty,
-        estimated_time=generated.estimated_time,
-        challenge_pdf_url="",
+        challenge_title=generated.challenge.title,
+        difficulty=generated.challenge.difficulty,
+        estimated_time=generated.challenge.estimated_completion_time,
+        challenge_pdf_url=str(
+            request.url_for(
+                "download_export_file",
+                bundle_name=Path(generated.export.folder_path).name,
+                filename="challenge.pdf",
+            )
+        ),
     )
+    await AsyncHistoryService(session).record_generation(
+        user.id, payload, response, int((perf_counter() - started) * 1000)
+    )
+    return response

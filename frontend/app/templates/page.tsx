@@ -22,6 +22,7 @@ import { useMutation } from "@tanstack/react-query";
 import { generateDataset } from "@/services/generation-service";
 import type { GenerateResponse } from "@/types/generation";
 import type { TemplateFormValues, TemplateRecord } from "@/types/templates";
+import { ProtectedPage } from "@/components/protected-page";
 
 export default function TemplatesPage() {
   const [query, setQuery] = useState("");
@@ -136,7 +137,7 @@ export default function TemplatesPage() {
   }
 
   return (
-    <main className="min-h-screen lg:grid lg:grid-cols-[250px_1fr]">
+    <ProtectedPage><main className="min-h-screen lg:grid lg:grid-cols-[250px_1fr]">
       <AppSidebar />
       <section className="min-w-0 px-4 py-6 sm:px-8 lg:px-12">
         <div className="mx-auto max-w-6xl space-y-6">
@@ -215,6 +216,6 @@ export default function TemplatesPage() {
 
       <DeleteDialog open={Boolean(deleteTarget)} onCancel={() => setDeleteTarget(null)} onConfirm={confirmDelete} title={deleteTarget ? `Delete “${deleteTarget.name}”?` : "Delete this template?"} />
       {toast ? <div className="fixed bottom-5 right-5 rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-xl">{toast}</div> : null}
-    </main>
+    </main></ProtectedPage>
   );
 }

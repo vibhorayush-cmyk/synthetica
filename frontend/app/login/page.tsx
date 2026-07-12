@@ -1,0 +1,3 @@
+import { Suspense } from "react";
+import { LoginCard } from "@/components/auth-card";
+export default function LoginPage() { return <Suspense fallback={null}><LoginCard /></Suspense>; }

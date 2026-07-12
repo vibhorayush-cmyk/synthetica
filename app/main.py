@@ -10,7 +10,9 @@ from app.config import EXPORTS_DIR, settings
 from app.core.logging import configure_logging
 from app.core.middleware import RateLimitMiddleware, RequestContextMiddleware
 from app.core.metrics import metrics
+from app.db.session import dispose_engine
 from app.exporters.storage import ExportStorageManager
+from app.db.session import dispose_engine
 
 
 EXPORTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -31,7 +33,11 @@ async def lifespan(_: FastAPI):
         maintenance.capacity_entries_removed,
         maintenance.usage_bytes,
     )
-    yield
+    try:
+        yield
+    finally:
+        await dispose_engine()
+    await dispose_engine()
 
 
 app = FastAPI(
@@ -47,7 +53,7 @@ app.add_middleware(
     allow_origins=settings.cors_origin_strings,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allow_headers=["Content-Type", "X-Request-ID"],
+    allow_headers=["Content-Type", "Authorization", "X-Request-ID"],
 )
 app.add_middleware(RateLimitMiddleware, settings=settings)
 app.add_middleware(RequestContextMiddleware)

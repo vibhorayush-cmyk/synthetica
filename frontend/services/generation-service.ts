@@ -1,4 +1,5 @@
 import type { GenerateRequest, GenerateResponse } from "@/types/generation";
+import { getAccessToken } from "@/services/api-client";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -42,7 +43,7 @@ export async function generateDataset(request: GenerateRequest): Promise<Generat
   try {
     response = await fetch(`${apiUrl}/generate`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(getAccessToken() ? { Authorization: `Bearer ${getAccessToken()}` } : {}) },
       body: JSON.stringify({ ...request, export: "zip" }),
     });
   } catch {

@@ -3,14 +3,18 @@
 import asyncio
 import logging
 from pathlib import Path
+from time import perf_counter
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import FileResponse
 
 from app.config import EXPORTS_DIR
 from app.config import settings
+from app.auth.dependencies import CurrentUser, DbSession
 from app.core.metrics import metrics
 from app.exporters.storage import ExportStorageLimitError
+from app.history.database_service import AsyncHistoryService
+from app.db.repositories import GenerationHistoryRepository
 from app.models.generation import GenerateRequest, GenerateResponse
 from app.services.generation_service import GenerationService, get_generation_service
 
@@ -27,9 +31,12 @@ logger = logging.getLogger(__name__)
 async def generate_dataset(
     payload: GenerateRequest,
     request: Request,
+    user: CurrentUser,
+    session: DbSession,
     service: GenerationService = Depends(get_generation_service),
 ) -> GenerateResponse:
-    """Generate, export, and describe a dataset bundle."""
+    """Generate an authenticated user's dataset and persist its ownership metadata."""
+    started = perf_counter()
     try:
         generated = await asyncio.wait_for(
             asyncio.to_thread(service.generate, payload),
@@ -76,7 +83,7 @@ async def generate_dataset(
             filename="challenge.pdf",
         )
     )
-    return GenerateResponse(
+    response = GenerateResponse(
         download_url=download_url,
         generated_files=[Path(path).name for path in generated.export.files],
         row_counts={name: len(table) for name, table in generated.tables.items()},
@@ -88,10 +95,19 @@ async def generate_dataset(
         estimated_time=generated.challenge.estimated_completion_time,
         challenge_pdf_url=challenge_pdf_url,
     )
+    await AsyncHistoryService(session).record_generation(
+        user.id,
+        payload,
+        response,
+        int((perf_counter() - started) * 1000),
+    )
+    return response
 
 
 @router.get("/downloads/{bundle_name}/{filename}", name="download_export_file")
-async def download_export_file(bundle_name: str, filename: str) -> FileResponse:
+async def download_export_file(
+    bundle_name: str, filename: str, user: CurrentUser, session: DbSession
+) -> FileResponse:
     """Return a safe individual artifact from an exported dataset bundle."""
     if (
         Path(bundle_name).name != bundle_name
@@ -100,6 +116,11 @@ async def download_export_file(bundle_name: str, filename: str) -> FileResponse:
     ):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     export_root = EXPORTS_DIR.resolve()
+    saved = await GenerationHistoryRepository(session).saved_dataset_for_user(
+        f"{bundle_name}.zip", user.id
+    )
+    if not saved:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     file_path = (export_root / bundle_name / filename).resolve()
     if export_root not in file_path.parents or not file_path.is_file():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
@@ -107,12 +128,19 @@ async def download_export_file(bundle_name: str, filename: str) -> FileResponse:
 
 
 @router.get("/downloads/{filename}", name="download_export")
-async def download_export(filename: str) -> FileResponse:
+async def download_export(
+    filename: str, user: CurrentUser, session: DbSession
+) -> FileResponse:
     """Return an exported ZIP archive by file name."""
     if Path(filename).name != filename or not filename.endswith(".zip"):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
     export_root = EXPORTS_DIR.resolve()
+    saved = await GenerationHistoryRepository(session).saved_dataset_for_user(
+        filename, user.id
+    )
+    if not saved:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     file_path = (export_root / filename).resolve()
     if file_path.parent != export_root or not file_path.is_file():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)

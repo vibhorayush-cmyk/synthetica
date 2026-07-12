@@ -22,11 +22,17 @@ class Settings(BaseSettings):
     app_name: str = "Synthetic Analytics Platform"
     environment: str = "development"
     debug: bool = False
-    database_url: str = "sqlite:///./data/app.db"
+    database_url: str = "postgresql+asyncpg://synthetica:synthetica@localhost:5432/synthetica"
     export_dir: Path = BASE_DIR / "exports"
     history_dir: Path = BASE_DIR / "history"
     template_dir: Path = BASE_DIR / "templates"
-    secret_key: SecretStr = SecretStr("change-me-in-production")
+    secret_key: SecretStr = SecretStr(
+        "development-only-secret-change-before-production-please"
+    )
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = Field(default=30, ge=5, le=1_440)
+    refresh_token_expire_days: int = Field(default=7, ge=1, le=90)
+    password_reset_expire_minutes: int = Field(default=30, ge=5, le=1_440)
     cors_origins: list[AnyHttpUrl] = Field(
         default_factory=lambda: [AnyHttpUrl("http://localhost:3000")]
     )
@@ -53,6 +59,11 @@ class Settings(BaseSettings):
     max_export_storage_mb: int = Field(default=500, ge=1)
     api_v1_prefix: str = "/api/v1"
     log_level: str = "INFO"
+
+    @property
+    def jwt_secret(self) -> str:
+        """Use the existing deployment secret as the JWT signing key."""
+        return self.secret_key.get_secret_value()
 
     @field_validator("debug", mode="before")
     @classmethod

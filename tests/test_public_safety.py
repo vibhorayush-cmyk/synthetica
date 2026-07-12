@@ -19,6 +19,7 @@ from app.exporters.storage import ExportStorageLimitError, ExportStorageManager
 from app.main import app
 from app.models.generation import GenerateRequest
 from app.services.generation_service import get_generation_service
+from conftest import auth_headers
 
 
 def test_retail_limit_returns_a_clear_environment_message(monkeypatch) -> None:
@@ -68,7 +69,7 @@ def test_generation_endpoint_has_a_separate_rate_limit() -> None:
     assert response.headers["retry-after"] == "60"
 
 
-def test_generation_timeout_returns_actionable_error(monkeypatch) -> None:
+def test_generation_timeout_returns_actionable_error(monkeypatch, api_client) -> None:
     """A slow service produces a bounded 504 response instead of hanging clients."""
 
     class SlowService:
@@ -82,9 +83,10 @@ def test_generation_timeout_returns_actionable_error(monkeypatch) -> None:
         SimpleNamespace(generation_timeout_seconds=0.001),
     )
     try:
-        with TestClient(app) as client:
-            response = client.post(
+        client = api_client
+        response = client.post(
                 "/generate",
+                headers=auth_headers(client),
                 json={
                     "industry": "retail",
                     "customers": 1,
@@ -92,7 +94,7 @@ def test_generation_timeout_returns_actionable_error(monkeypatch) -> None:
                     "stores": 1,
                     "orders": 1,
                 },
-            )
+        )
     finally:
         app.dependency_overrides.clear()
 

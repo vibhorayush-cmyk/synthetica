@@ -12,6 +12,8 @@ import { HistoryFilters } from "@/components/history/history-filters";
 import { HistoryDetails } from "@/components/history/history-details";
 import { useCloneHistoryEntry, useDeleteHistoryEntry, useHistory, useRegenerateHistoryEntry } from "@/hooks/use-history";
 import type { HistoryEntry } from "@/types/history";
+import { ProtectedPage } from "@/components/protected-page";
+import { authenticatedDownload } from "@/services/api-client";
 
 export default function HistoryPage() {
   const [query, setQuery] = useState("");
@@ -67,7 +69,7 @@ export default function HistoryPage() {
   }, [history]);
 
   function handleDownload(entry: HistoryEntry) {
-    window.open(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/downloads/${entry.zip_filename}`, "_blank", "noopener,noreferrer");
+    void authenticatedDownload(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/downloads/${entry.zip_filename}`);
   }
 
   function handleRegenerate(entry: HistoryEntry) {
@@ -92,7 +94,7 @@ export default function HistoryPage() {
   }
 
   return (
-    <main className="min-h-screen lg:grid lg:grid-cols-[250px_1fr]">
+    <ProtectedPage><main className="min-h-screen lg:grid lg:grid-cols-[250px_1fr]">
       <AppSidebar />
       <section className="min-w-0 px-4 py-6 sm:px-8 lg:px-12">
         <div className="mx-auto max-w-7xl space-y-6">
@@ -144,6 +146,6 @@ export default function HistoryPage() {
         </div>
       </section>
       {toast ? <div className="fixed bottom-5 right-5 rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-xl">{toast}</div> : null}
-    </main>
+    </main></ProtectedPage>
   );
 }

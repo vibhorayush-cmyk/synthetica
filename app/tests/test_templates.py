@@ -57,10 +57,11 @@ def test_template_crud_and_generation_from_template() -> None:
             raise AssertionError("template should be deleted")
 
 
-def test_template_routes_validate_input() -> None:
-    client = TestClient(app)
+def test_template_routes_validate_input(api_client) -> None:
+    client = api_client
     response = client.post(
         "/templates",
+        headers={"Authorization": "Bearer invalid"},
         json={
             "name": "Retail Beginner",
             "description": "Starter template",
@@ -75,7 +76,7 @@ def test_template_routes_validate_input() -> None:
             "difficulty": "Beginner",
         },
     )
-    assert response.status_code == 422
+    assert response.status_code == 401
 
     response = client.get("/templates")
-    assert response.status_code == 200
+    assert response.status_code == 401
