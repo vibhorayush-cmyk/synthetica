@@ -34,7 +34,10 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = Field(default=7, ge=1, le=90)
     password_reset_expire_minutes: int = Field(default=30, ge=5, le=1_440)
     cors_origins: list[AnyHttpUrl] = Field(
-        default_factory=lambda: [AnyHttpUrl("http://localhost:3000")]
+        default_factory=lambda: [
+            AnyHttpUrl("http://localhost:3000"),
+            AnyHttpUrl("http://localhost:3001"),
+        ]
     )
     max_dataset_rows: int = Field(default=1_000_000, ge=1, le=10_000_000)
     # Retail uses the public, backwards-compatible environment variable names
