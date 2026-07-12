@@ -12,10 +12,12 @@ import pandas as pd
 from app.challenges.base import ChallengePack
 from app.challenges.writer import ChallengePackWriter
 from app.config import EXPORTS_DIR
+from app.core.metrics import metrics
 from app.exporters.csv_exporter import CSVExporter
 from app.exporters.data_dictionary import DataDictionaryGenerator
 from app.exporters.excel_exporter import ExcelExporter
 from app.exporters.readme_generator import ReadmeGenerator
+from app.exporters.storage import ExportStorageLimitError, ExportStorageManager
 from app.exporters.zip_exporter import ZipExporter
 
 
@@ -46,6 +48,7 @@ class ExportService:
         readme_generator: ReadmeGenerator | None = None,
         challenge_writer: ChallengePackWriter | None = None,
         clock: Callable[[], datetime] | None = None,
+        storage_manager: ExportStorageManager | None = None,
     ) -> None:
         self._exports_root = exports_root or EXPORTS_DIR
         self._csv_exporter = csv_exporter or CSVExporter()
@@ -55,6 +58,14 @@ class ExportService:
         self._readme_generator = readme_generator or ReadmeGenerator()
         self._challenge_writer = challenge_writer or ChallengePackWriter()
         self._clock = clock or datetime.now
+        from app.core.settings import get_settings
+
+        current_settings = get_settings()
+        self._storage_manager = storage_manager or ExportStorageManager(
+            self._exports_root,
+            current_settings.export_ttl_hours,
+            current_settings.max_export_storage_mb,
+        )
 
     def export(
         self,
@@ -65,6 +76,7 @@ class ExportService:
     ) -> ExportResult:
         """Write CSVs and documentation, then return a ZIP bundle result."""
         normalized_tables = self._validate_tables(tables)
+        maintenance = self._storage_manager.maintain()
         started = perf_counter()
         generated_at = self._clock()
         export_name = f"{dataset_name}_{generated_at.strftime('%Y%m%d_%H%M%S')}"
@@ -74,31 +86,44 @@ class ExportService:
             folder_path = self._exports_root / export_name
         folder_path.mkdir(parents=True, exist_ok=False)
 
-        csv_paths = self._csv_exporter.export(normalized_tables, folder_path)
-        dictionary = self._dictionary_generator.generate(normalized_tables)
-        dictionary_path = self._excel_exporter.export(
-            dictionary, folder_path / "data_dictionary.xlsx", "Data Dictionary"
-        )
-        readme_path = folder_path / "README.md"
-        readme_path.write_text(
-            self._readme_generator.generate(
-                dataset_name,
-                generated_at,
-                normalized_tables,
-                quality_summary,
-                challenge_pack.title if challenge_pack else None,
-            ),
-            encoding="utf-8",
-        )
-        challenge_paths = (
-            self._challenge_writer.write(challenge_pack, folder_path)
-            if challenge_pack
-            else []
-        )
-        zip_path = self._zip_exporter.export(
-            folder_path, self._exports_root / f"{export_name}.zip"
-        )
+        zip_path = self._exports_root / f"{export_name}.zip"
+        try:
+            csv_paths = self._csv_exporter.export(normalized_tables, folder_path)
+            dictionary = self._dictionary_generator.generate(normalized_tables)
+            dictionary_path = self._excel_exporter.export(
+                dictionary, folder_path / "data_dictionary.xlsx", "Data Dictionary"
+            )
+            readme_path = folder_path / "README.md"
+            readme_path.write_text(
+                self._readme_generator.generate(
+                    dataset_name,
+                    generated_at,
+                    normalized_tables,
+                    quality_summary,
+                    challenge_pack.title if challenge_pack else None,
+                ),
+                encoding="utf-8",
+            )
+            challenge_paths = (
+                self._challenge_writer.write(challenge_pack, folder_path)
+                if challenge_pack
+                else []
+            )
+            zip_path = self._zip_exporter.export(folder_path, zip_path)
+            maintenance = self._storage_manager.maintain({folder_path, zip_path})
+        except ExportStorageLimitError:
+            self._storage_manager.remove_paths({folder_path, zip_path})
+            raise
+        except Exception:
+            self._storage_manager.remove_paths({folder_path, zip_path})
+            raise
         files = [*csv_paths, dictionary_path, readme_path, *challenge_paths]
+
+        metrics.record_storage_maintenance(
+            maintenance.expired_entries_removed,
+            maintenance.capacity_entries_removed,
+            maintenance.usage_bytes,
+        )
 
         duration_ms = (perf_counter() - started) * 1000
         logger.info(
@@ -108,6 +133,11 @@ class ExportService:
                 "table_count": len(normalized_tables),
                 "file_count": len(files),
                 "duration_ms": round(duration_ms, 2),
+                "storage_bytes": maintenance.usage_bytes,
+                "cleanup_count": (
+                    maintenance.expired_entries_removed
+                    + maintenance.capacity_entries_removed
+                ),
             },
         )
         return ExportResult(

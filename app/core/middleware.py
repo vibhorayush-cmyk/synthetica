@@ -63,7 +63,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self._limit = settings.rate_limit_requests
         self._window = settings.rate_limit_window_seconds
-        self._requests: dict[str, deque[float]] = defaultdict(deque)
+        self._generation_limit = settings.generation_rate_limit_requests
+        self._generation_window = settings.generation_rate_limit_window_seconds
+        self._requests: dict[tuple[str, str], deque[float]] = defaultdict(deque)
 
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
@@ -71,15 +73,25 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if request.method not in {"POST", "PUT", "PATCH", "DELETE"}:
             return await call_next(request)
         client = request.client.host if request.client else "unknown"
+        is_generation = request.method == "POST" and request.url.path.rstrip().endswith(
+            "/generate"
+        )
+        scope = "generation" if is_generation else "mutating"
+        limit = self._generation_limit if is_generation else self._limit
+        window = self._generation_window if is_generation else self._window
         now = monotonic()
-        timestamps = self._requests[client]
-        while timestamps and now - timestamps[0] >= self._window:
+        timestamps = self._requests[(client, scope)]
+        while timestamps and now - timestamps[0] >= window:
             timestamps.popleft()
-        if len(timestamps) >= self._limit:
+        if len(timestamps) >= limit:
             return JSONResponse(
                 status_code=429,
-                content={"detail": "Rate limit exceeded. Try again shortly."},
-                headers={"Retry-After": str(self._window)},
+                content={
+                    "detail": "Too many generation requests. Please wait before trying again."
+                    if is_generation
+                    else "Rate limit exceeded. Please wait before trying again."
+                },
+                headers={"Retry-After": str(window)},
             )
         timestamps.append(now)
         return await call_next(request)

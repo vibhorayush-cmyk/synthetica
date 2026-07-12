@@ -92,11 +92,15 @@ class GenerationService:
                 quality=result.quality,
                 challenge=result.challenge,
             )
-        except Exception:
+        except Exception as error:
             metrics.record_failure()
             logger.exception(
                 "dataset_generation_failed",
-                extra={"industry": request.industry, "scenario": request.scenario},
+                extra={
+                    "industry": request.industry,
+                    "scenario": request.scenario,
+                    "error_type": type(error).__name__,
+                },
             )
             raise
         finally:

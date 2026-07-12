@@ -9,6 +9,8 @@ from app.api.router import api_router
 from app.config import EXPORTS_DIR, settings
 from app.core.logging import configure_logging
 from app.core.middleware import RateLimitMiddleware, RequestContextMiddleware
+from app.core.metrics import metrics
+from app.exporters.storage import ExportStorageManager
 
 
 EXPORTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -19,6 +21,16 @@ configure_logging(settings.log_level)
 async def lifespan(_: FastAPI):
     """Prepare runtime directories when the application starts."""
     EXPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    maintenance = ExportStorageManager(
+        EXPORTS_DIR,
+        settings.export_ttl_hours,
+        settings.max_export_storage_mb,
+    ).maintain()
+    metrics.record_storage_maintenance(
+        maintenance.expired_entries_removed,
+        maintenance.capacity_entries_removed,
+        maintenance.usage_bytes,
+    )
     yield
 
 

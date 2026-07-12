@@ -1,16 +1,22 @@
 """Dataset generation endpoints."""
 
+import asyncio
+import logging
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import FileResponse
 
 from app.config import EXPORTS_DIR
+from app.config import settings
+from app.core.metrics import metrics
+from app.exporters.storage import ExportStorageLimitError
 from app.models.generation import GenerateRequest, GenerateResponse
 from app.services.generation_service import GenerationService, get_generation_service
 
 
 router = APIRouter(tags=["generation"])
+logger = logging.getLogger(__name__)
 
 
 @router.post(
@@ -23,9 +29,38 @@ async def generate_dataset(
     request: Request,
     service: GenerationService = Depends(get_generation_service),
 ) -> GenerateResponse:
-    """Generate, export, and describe a retail dataset bundle."""
+    """Generate, export, and describe a dataset bundle."""
     try:
-        generated = service.generate(payload)
+        generated = await asyncio.wait_for(
+            asyncio.to_thread(service.generate, payload),
+            timeout=settings.generation_timeout_seconds,
+        )
+    except TimeoutError as error:
+        metrics.record_timeout()
+        logger.warning(
+            "dataset_generation_timed_out",
+            extra={
+                "industry": payload.industry,
+                "scenario": payload.scenario,
+                "timeout_seconds": settings.generation_timeout_seconds,
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=(
+                "Generation timed out after "
+                f"{settings.generation_timeout_seconds} seconds. Reduce the dataset size and try again."
+            ),
+        ) from error
+    except ExportStorageLimitError as error:
+        logger.warning(
+            "dataset_generation_rejected_storage_limit",
+            extra={"industry": payload.industry, "scenario": payload.scenario},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_507_INSUFFICIENT_STORAGE,
+            detail="Export storage is temporarily full. Please try again later.",
+        ) from error
     except ValueError as error:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

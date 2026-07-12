@@ -52,18 +52,45 @@ class GenerateRequest(BaseModel):
 
     industry: str = Field(min_length=1, max_length=100)
     scenario: str = Field(default="none", min_length=1, max_length=100)
-    customers: int | None = Field(default=None, ge=1, le=1_000_000)
-    products: int | None = Field(default=None, ge=1, le=1_000_000)
-    stores: int | None = Field(default=None, ge=1, le=100_000)
-    orders: int | None = Field(default=None, ge=1, le=1_000_000)
+    customers: int | None = Field(default=None, ge=1)
+    products: int | None = Field(default=None, ge=1)
+    stores: int | None = Field(default=None, ge=1)
+    orders: int | None = Field(default=None, ge=1)
     configuration: dict[str, int] = Field(default_factory=dict)
     export: ExportFormat = ExportFormat.ZIP
     quality: QualityConfig = Field(default_factory=QualityConfig)
 
     @model_validator(mode="after")
     def validate_deployment_row_limit(self) -> "GenerateRequest":
-        """Enforce the deployment-configured dataset size boundary."""
+        """Enforce deployment limits before work reaches a generator."""
         settings = get_settings()
+        configuration = self.normalized_configuration()
+        if any(value < 1 for value in configuration.values()):
+            raise ValueError("configuration values must be at least 1")
+        if max(configuration.values()) > settings.max_dataset_rows:
+            raise ValueError(
+                "configuration values must not exceed "
+                f"MAX_DATASET_ROWS ({settings.max_dataset_rows})"
+            )
+
+        for field, value in configuration.items():
+            limit = settings.industry_generation_limits(self.industry).get(field)
+            if limit and value > limit[0]:
+                raise ValueError(
+                    f"configuration.{field} must not exceed {limit[1]} "
+                    f"({limit[0]}) for industry '{self.industry}'."
+                )
+
+        estimated_rows = self.estimated_total_rows(configuration)
+        if estimated_rows > settings.max_total_rows:
+            raise ValueError(
+                f"configuration produces approximately {estimated_rows} rows, which "
+                f"exceeds MAX_TOTAL_ROWS ({settings.max_total_rows})."
+            )
+        return self
+
+    def normalized_configuration(self) -> dict[str, int]:
+        """Return either plugin configuration or the legacy retail fields."""
         configuration = self.configuration or {
             key: value
             for key, value in {
@@ -76,13 +103,14 @@ class GenerateRequest(BaseModel):
         }
         if not configuration:
             raise ValueError("configuration must include at least one positive field")
-        if any(value < 1 for value in configuration.values()):
-            raise ValueError("configuration values must be at least 1")
-        if max(configuration.values()) > settings.max_dataset_rows:
-            raise ValueError(
-                f"configuration values must not exceed MAX_DATASET_ROWS ({settings.max_dataset_rows})"
-            )
-        return self
+        return configuration
+
+    def estimated_total_rows(self, configuration: dict[str, int]) -> int:
+        """Estimate generated rows using the plugin's known fact-table shape."""
+        total = sum(configuration.values())
+        if self.industry == "retail":
+            total += configuration.get("orders", 0)
+        return total
 
 
 class GenerateResponse(BaseModel):
