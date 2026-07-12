@@ -5,6 +5,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.db.models import GenerationHistory, RefreshToken, SavedDataset, Template, User
 
@@ -80,7 +81,9 @@ class GenerationHistoryRepository:
         self, entry_id: UUID, user_id: UUID
     ) -> GenerationHistory | None:
         result = await self._session.execute(
-            select(GenerationHistory).where(
+            select(GenerationHistory)
+            .options(selectinload(GenerationHistory.saved_dataset))
+            .where(
                 GenerationHistory.id == entry_id,
                 GenerationHistory.user_id == user_id,
             )

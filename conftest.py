@@ -7,9 +7,20 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from app.core.middleware import RateLimitMiddleware
 from app.db.base import Base
 from app.db.session import get_db_session
 from app.main import app
+
+
+def _reset_rate_limiter() -> None:
+    """Keep test clients isolated from the application's in-memory limiter."""
+    middleware = app.middleware_stack
+    while middleware is not None:
+        if isinstance(middleware, RateLimitMiddleware):
+            middleware._requests.clear()  # noqa: SLF001 - test-only state reset
+            return
+        middleware = getattr(middleware, "app", None)
 
 
 @pytest.fixture
@@ -26,6 +37,7 @@ def api_client(tmp_path) -> Iterator[TestClient]:
         async with factory() as session:
             yield session
 
+    _reset_rate_limiter()
     asyncio.run(create_schema())
     app.dependency_overrides[get_db_session] = override_session
     try:
@@ -33,10 +45,13 @@ def api_client(tmp_path) -> Iterator[TestClient]:
             yield client
     finally:
         app.dependency_overrides.clear()
+        _reset_rate_limiter()
         asyncio.run(engine.dispose())
 
 
-def auth_headers(client: TestClient, email: str = "member@example.com") -> dict[str, str]:
+def auth_headers(
+    client: TestClient, email: str = "member@example.com"
+) -> dict[str, str]:
     """Register one valid user and return its bearer authorization header."""
     response = client.post(
         "/auth/register",
