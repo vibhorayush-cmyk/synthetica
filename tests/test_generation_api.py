@@ -3,7 +3,6 @@
 from datetime import datetime
 from pathlib import Path
 
-from fastapi.testclient import TestClient
 
 from app.api.routes import generation
 from app.exporters import ExportService

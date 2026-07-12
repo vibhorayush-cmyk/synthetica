@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Template
 from app.db.repositories import TemplateRepository
-from app.models.generation import GenerateRequest, GenerateResponse, QualityConfig
+from app.models.generation import GenerateRequest, QualityConfig
 from app.services.generation_service import GenerationService, get_generation_service
 from app.templates.schemas import TemplateCreate, TemplateResponse, TemplateUpdate
 

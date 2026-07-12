@@ -1,11 +1,8 @@
 """Database-backed authentication, authorization, and ownership tests."""
 
-from datetime import datetime, timezone
 
 from fastapi.testclient import TestClient
 
-from app.history.database_service import AsyncHistoryService
-from app.models.generation import GenerateRequest, GenerateResponse
 
 from conftest import auth_headers
 

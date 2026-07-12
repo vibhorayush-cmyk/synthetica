@@ -12,7 +12,6 @@ from app.core.middleware import RateLimitMiddleware, RequestContextMiddleware
 from app.core.metrics import metrics
 from app.db.session import dispose_engine
 from app.exporters.storage import ExportStorageManager
-from app.db.session import dispose_engine
 
 
 EXPORTS_DIR.mkdir(parents=True, exist_ok=True)

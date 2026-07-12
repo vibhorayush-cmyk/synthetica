@@ -1,9 +1,7 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from fastapi.testclient import TestClient
 
-from app.main import app
 from app.templates.repository import JsonTemplateRepository
 from app.templates.schemas import TemplateCreate, TemplateUpdate
 from app.templates.service import TemplateService
