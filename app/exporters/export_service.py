@@ -11,7 +11,7 @@ import pandas as pd
 
 from app.challenges.base import ChallengePack
 from app.challenges.writer import ChallengePackWriter
-from app.config import BASE_DIR
+from app.config import EXPORTS_DIR
 from app.exporters.csv_exporter import CSVExporter
 from app.exporters.data_dictionary import DataDictionaryGenerator
 from app.exporters.excel_exporter import ExcelExporter
@@ -47,7 +47,7 @@ class ExportService:
         challenge_writer: ChallengePackWriter | None = None,
         clock: Callable[[], datetime] | None = None,
     ) -> None:
-        self._exports_root = exports_root or BASE_DIR / "exports"
+        self._exports_root = exports_root or EXPORTS_DIR
         self._csv_exporter = csv_exporter or CSVExporter()
         self._excel_exporter = excel_exporter or ExcelExporter()
         self._zip_exporter = zip_exporter or ZipExporter()
