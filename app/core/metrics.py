@@ -40,7 +40,10 @@ class GenerationMetrics:
             self.generation_timeouts += 1
 
     def record_storage_maintenance(
-        self, expired_entries_removed: int, capacity_entries_removed: int, usage_bytes: int
+        self,
+        expired_entries_removed: int,
+        capacity_entries_removed: int,
+        usage_bytes: int,
     ) -> None:
         """Record aggregate storage state without exposing customer data or paths."""
         with self._lock:

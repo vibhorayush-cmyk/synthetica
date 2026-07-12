@@ -82,7 +82,9 @@ class ExportStorageManager:
         ]
 
     def _oldest_unprotected(self, protected: set[Path]) -> Path | None:
-        candidates = [path for path in self._entries() if path.resolve() not in protected]
+        candidates = [
+            path for path in self._entries() if path.resolve() not in protected
+        ]
         return min(candidates, key=lambda path: path.stat().st_mtime, default=None)
 
     @staticmethod

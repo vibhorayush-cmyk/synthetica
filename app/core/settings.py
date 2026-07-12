@@ -22,7 +22,9 @@ class Settings(BaseSettings):
     app_name: str = "Synthetic Analytics Platform"
     environment: str = "development"
     debug: bool = False
-    database_url: str = "postgresql+asyncpg://synthetica:synthetica@localhost:5432/synthetica"
+    database_url: str = (
+        "postgresql+asyncpg://synthetica:synthetica@localhost:5432/synthetica"
+    )
     export_dir: Path = BASE_DIR / "exports"
     history_dir: Path = BASE_DIR / "history"
     template_dir: Path = BASE_DIR / "templates"

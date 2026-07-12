@@ -23,7 +23,10 @@ class AsyncTemplateService:
         self._generation_service = generation_service or get_generation_service()
 
     async def list(self, user_id: UUID) -> list[TemplateResponse]:
-        return [self._to_response(item) for item in await self._repository.list_for_user(user_id)]
+        return [
+            self._to_response(item)
+            for item in await self._repository.list_for_user(user_id)
+        ]
 
     async def get(self, template_id: UUID, user_id: UUID) -> TemplateResponse:
         template = await self._get_record(template_id, user_id)
@@ -56,10 +59,20 @@ class AsyncTemplateService:
                 raise ValueError("template name already exists")
         merged = self._to_response(template).model_copy(update=changes)
         self._validate_payload(merged)
-        for field in ("name", "description", "industry", "scenario", "export_type", "quality", "difficulty"):
+        for field in (
+            "name",
+            "description",
+            "industry",
+            "scenario",
+            "export_type",
+            "quality",
+            "difficulty",
+        ):
             if field in changes:
                 setattr(template, field, changes[field])
-        if any(field in changes for field in ("customers", "products", "stores", "orders")):
+        if any(
+            field in changes for field in ("customers", "products", "stores", "orders")
+        ):
             template.configuration = self._configuration(merged)
         template.version += 1
         return self._to_response(await self._repository.save(template))
@@ -67,7 +80,9 @@ class AsyncTemplateService:
     async def delete(self, template_id: UUID, user_id: UUID) -> None:
         await self._repository.delete(await self._get_record(template_id, user_id))
 
-    async def generate_request(self, template_id: UUID, user_id: UUID) -> GenerateRequest:
+    async def generate_request(
+        self, template_id: UUID, user_id: UUID
+    ) -> GenerateRequest:
         template = await self._get_record(template_id, user_id)
         return GenerateRequest(
             industry=template.industry,

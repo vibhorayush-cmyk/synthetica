@@ -11,7 +11,9 @@ from app.services.generation_service import GenerationService, get_generation_se
 from conftest import auth_headers
 
 
-def test_generate_retail_dataset_and_download_zip(tmp_path: Path, monkeypatch, api_client) -> None:
+def test_generate_retail_dataset_and_download_zip(
+    tmp_path: Path, monkeypatch, api_client
+) -> None:
     """Generating retail data returns metadata and a downloadable ZIP archive."""
     service = GenerationService(
         ExportService(
@@ -26,48 +28,48 @@ def test_generate_retail_dataset_and_download_zip(tmp_path: Path, monkeypatch, a
         client = api_client
         headers = auth_headers(client)
         response = client.post(
-                "/generate",
-                headers=headers,
-                json={
-                    "industry": "retail",
-                    "customers": 2,
-                    "products": 2,
-                    "stores": 1,
-                    "orders": 10,
-                    "export": "zip",
-                    "quality": {"missing_values": 5},
-                },
-        )
-        assert response.status_code == 201
-        payload = response.json()
-        assert payload["row_counts"] == {
+            "/generate",
+            headers=headers,
+            json={
+                "industry": "retail",
                 "customers": 2,
                 "products": 2,
                 "stores": 1,
                 "orders": 10,
-                "order_items": 10,
+                "export": "zip",
+                "quality": {"missing_values": 5},
+            },
+        )
+        assert response.status_code == 201
+        payload = response.json()
+        assert payload["row_counts"] == {
+            "customers": 2,
+            "products": 2,
+            "stores": 1,
+            "orders": 10,
+            "order_items": 10,
         }
         assert payload["generated_at"] == "2026-07-12T14:30:45"
         assert payload["scenario"] == "none"
         assert payload["quality"] == {
-                "missing_values": 5.0,
-                "duplicates": 0.0,
-                "outliers": 0.0,
-                "invalid_formats": 0.0,
-                "referential_noise": 0.0,
+            "missing_values": 5.0,
+            "duplicates": 0.0,
+            "outliers": 0.0,
+            "invalid_formats": 0.0,
+            "referential_noise": 0.0,
         }
         assert set(payload["generated_files"]) == {
-                "customers.csv",
-                "products.csv",
-                "stores.csv",
-                "orders.csv",
-                "order_items.csv",
-                "data_dictionary.xlsx",
-                "README.md",
-                "challenge.md",
-                "challenge.pdf",
-                "requirements.md",
-                "dataset_overview.md",
+            "customers.csv",
+            "products.csv",
+            "stores.csv",
+            "orders.csv",
+            "order_items.csv",
+            "data_dictionary.xlsx",
+            "README.md",
+            "challenge.md",
+            "challenge.pdf",
+            "requirements.md",
+            "dataset_overview.md",
         }
         assert payload["challenge_title"] == "Retail Performance Investigation"
         assert payload["difficulty"] == "Intermediate"
@@ -91,16 +93,16 @@ def test_generate_rejects_unsupported_industry(api_client) -> None:
     """Only explicitly supported industries pass API request validation."""
     client = api_client
     response = client.post(
-            "/generate",
-            headers=auth_headers(client),
-            json={
-                "industry": "healthcare",
-                "customers": 2,
-                "products": 2,
-                "stores": 1,
-                "orders": 10,
-                "export": "zip",
-            },
+        "/generate",
+        headers=auth_headers(client),
+        json={
+            "industry": "healthcare",
+            "customers": 2,
+            "products": 2,
+            "stores": 1,
+            "orders": 10,
+            "export": "zip",
+        },
     )
 
     assert response.status_code == 422

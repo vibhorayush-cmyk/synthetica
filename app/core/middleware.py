@@ -87,9 +87,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=429,
                 content={
-                    "detail": "Too many generation requests. Please wait before trying again."
-                    if is_generation
-                    else "Rate limit exceeded. Please wait before trying again."
+                    "detail": (
+                        "Too many generation requests. Please wait before trying again."
+                        if is_generation
+                        else "Rate limit exceeded. Please wait before trying again."
+                    )
                 },
                 headers={"Retry-After": str(window)},
             )

@@ -21,13 +21,21 @@ from app.auth.service import AuthService, AuthenticationError
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
 
-@router.post("/register", response_model=RegistrationResponse, status_code=status.HTTP_201_CREATED)
-async def register(payload: RegistrationRequest, session: DbSession) -> RegistrationResponse:
+@router.post(
+    "/register",
+    response_model=RegistrationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def register(
+    payload: RegistrationRequest, session: DbSession
+) -> RegistrationResponse:
     """Register a user and return tokens for the initial authenticated session."""
     try:
         user, tokens = await AuthService(session).register(payload)
     except ValueError as error:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(error)
+        ) from error
     return RegistrationResponse(
         user=UserResponse.from_model(user),
         verification_message="Verification email delivery is mocked; the account is ready to use.",
@@ -41,7 +49,9 @@ async def login(payload: LoginRequest, session: DbSession) -> TokenResponse:
     try:
         return await AuthService(session).login(payload)
     except AuthenticationError as error:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(error)) from error
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=str(error)
+        ) from error
 
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -50,7 +60,9 @@ async def refresh(payload: RefreshRequest, session: DbSession) -> TokenResponse:
     try:
         return await AuthService(session).refresh(payload.refresh_token)
     except AuthenticationError as error:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(error)) from error
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=str(error)
+        ) from error
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -59,7 +71,9 @@ async def logout(payload: LogoutRequest, user: CurrentUser, session: DbSession) 
     try:
         await AuthService(session).logout(user, payload.refresh_token)
     except AuthenticationError as error:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(error)) from error
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=str(error)
+        ) from error
 
 
 @router.post("/password-reset/request", response_model=PasswordResetTokenResponse)
@@ -75,12 +89,16 @@ async def request_password_reset(
 
 
 @router.post("/password-reset/confirm", status_code=status.HTTP_204_NO_CONTENT)
-async def confirm_password_reset(payload: PasswordResetConfirm, session: DbSession) -> None:
+async def confirm_password_reset(
+    payload: PasswordResetConfirm, session: DbSession
+) -> None:
     """Set a new password using a valid reset token."""
     try:
         await AuthService(session).reset_password(payload)
     except AuthenticationError as error:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(error)) from error
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=str(error)
+        ) from error
 
 
 @router.get("/me", response_model=UserResponse)

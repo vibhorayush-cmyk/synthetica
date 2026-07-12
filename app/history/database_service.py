@@ -60,12 +60,16 @@ class AsyncHistoryService:
             history=entry,
             filename=filename,
             size_bytes=size,
-            expires_at=datetime.now(UTC) + timedelta(hours=self._settings.export_ttl_hours),
+            expires_at=datetime.now(UTC)
+            + timedelta(hours=self._settings.export_ttl_hours),
         )
         return await self._repository.create(entry, saved)
 
     async def list(self, user_id: UUID) -> list[HistoryEntryResponse]:
-        return [self._to_response(entry) for entry in await self._repository.list_for_user(user_id)]
+        return [
+            self._to_response(entry)
+            for entry in await self._repository.list_for_user(user_id)
+        ]
 
     async def get(self, entry_id: UUID, user_id: UUID) -> HistoryEntryResponse:
         entry = await self._repository.get_for_user(entry_id, user_id)

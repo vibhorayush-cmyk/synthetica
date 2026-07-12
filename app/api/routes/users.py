@@ -24,5 +24,7 @@ async def update_me(
     try:
         updated = await AuthService(session).update_profile(user, payload)
     except AuthenticationError as error:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)) from error
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
+        ) from error
     return UserResponse.from_model(updated)

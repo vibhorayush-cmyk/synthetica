@@ -28,9 +28,7 @@ def test_retail_limit_returns_a_clear_environment_message(monkeypatch) -> None:
     monkeypatch.setattr("app.models.generation.get_settings", lambda: configured)
 
     with pytest.raises(ValidationError, match=r"MAX_CUSTOMERS \(2\)"):
-        GenerateRequest(
-            industry="retail", customers=3, products=1, stores=1, orders=1
-        )
+        GenerateRequest(industry="retail", customers=3, products=1, stores=1, orders=1)
 
 
 def test_total_rows_limit_accounts_for_retail_order_items(monkeypatch) -> None:
@@ -39,9 +37,7 @@ def test_total_rows_limit_accounts_for_retail_order_items(monkeypatch) -> None:
     monkeypatch.setattr("app.models.generation.get_settings", lambda: configured)
 
     with pytest.raises(ValidationError, match=r"MAX_TOTAL_ROWS \(5\)"):
-        GenerateRequest(
-            industry="retail", customers=1, products=1, stores=1, orders=2
-        )
+        GenerateRequest(industry="retail", customers=1, products=1, stores=1, orders=2)
 
 
 def test_generation_endpoint_has_a_separate_rate_limit() -> None:
@@ -85,15 +81,15 @@ def test_generation_timeout_returns_actionable_error(monkeypatch, api_client) ->
     try:
         client = api_client
         response = client.post(
-                "/generate",
-                headers=auth_headers(client),
-                json={
-                    "industry": "retail",
-                    "customers": 1,
-                    "products": 1,
-                    "stores": 1,
-                    "orders": 1,
-                },
+            "/generate",
+            headers=auth_headers(client),
+            json={
+                "industry": "retail",
+                "customers": 1,
+                "products": 1,
+                "stores": 1,
+                "orders": 1,
+            },
         )
     finally:
         app.dependency_overrides.clear()
@@ -102,7 +98,9 @@ def test_generation_timeout_returns_actionable_error(monkeypatch, api_client) ->
     assert "Reduce the dataset size" in response.json()["detail"]
 
 
-def test_export_storage_expires_old_entries_and_enforces_capacity(tmp_path: Path) -> None:
+def test_export_storage_expires_old_entries_and_enforces_capacity(
+    tmp_path: Path,
+) -> None:
     """Expired exports are removed first and capacity removes oldest remaining bundles."""
     expired = tmp_path / "expired.zip"
     expired.write_bytes(b"old")

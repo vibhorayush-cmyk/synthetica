@@ -59,14 +59,28 @@ class RetailPlugin(BaseIndustryPlugin):
             "configuration_fields": fields,
             "supported_scenarios": self.supported_scenarios(),
             "supported_templates": self.default_templates(),
-            "kpis": ["Total Revenue", "Profit Margin", "Average Order Value", "Return Rate"],
+            "kpis": [
+                "Total Revenue",
+                "Profit Margin",
+                "Average Order Value",
+                "Return Rate",
+            ],
             "dashboard_suggestions": [
                 "Executive performance dashboard",
                 "Category and customer drillthrough",
                 "Geographic sales analysis",
             ],
-            "challenge_types": ["Retail Performance Investigation", "Promotional Margin Review"],
-            "field_layout": [{"title": "Dataset Size", "fields": [field["key"] for field in fields], "columns": 2}],
+            "challenge_types": [
+                "Retail Performance Investigation",
+                "Promotional Margin Review",
+            ],
+            "field_layout": [
+                {
+                    "title": "Dataset Size",
+                    "fields": [field["key"] for field in fields],
+                    "columns": 2,
+                }
+            ],
             "generation_available": True,
         }
 

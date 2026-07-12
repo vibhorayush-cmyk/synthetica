@@ -89,9 +89,19 @@ class BankingPlugin(BaseIndustryPlugin):
             "supported_scenarios": self.supported_scenarios(),
             "supported_templates": self.default_templates(),
             "kpis": ["Total Deposits", "Total Loans", "Default Rate", "Fraud Rate"],
-            "dashboard_suggestions": ["Branch profitability", "Portfolio risk", "Customer product penetration"],
+            "dashboard_suggestions": [
+                "Branch profitability",
+                "Portfolio risk",
+                "Customer product penetration",
+            ],
             "challenge_types": ["Credit Portfolio Review", "Fraud Investigation"],
-            "field_layout": [{"title": "Dataset Size", "fields": [field["key"] for field in fields], "columns": 2}],
+            "field_layout": [
+                {
+                    "title": "Dataset Size",
+                    "fields": [field["key"] for field in fields],
+                    "columns": 2,
+                }
+            ],
             "generation_available": True,
         }
 

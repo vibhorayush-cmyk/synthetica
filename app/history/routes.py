@@ -13,7 +13,9 @@ router = APIRouter(prefix="/history", tags=["history"])
 
 
 @router.get("", response_model=list[HistoryEntryResponse])
-async def list_history(user: CurrentUser, session: DbSession) -> list[HistoryEntryResponse]:
+async def list_history(
+    user: CurrentUser, session: DbSession
+) -> list[HistoryEntryResponse]:
     """List the current user's exported datasets only."""
     return await AsyncHistoryService(session).list(user.id)
 
@@ -26,16 +28,22 @@ async def get_history_entry(
     try:
         return await AsyncHistoryService(session).get(entry_id, user.id)
     except ValueError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(error)
+        ) from error
 
 
 @router.delete("/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_history_entry(entry_id: UUID, user: CurrentUser, session: DbSession) -> None:
+async def delete_history_entry(
+    entry_id: UUID, user: CurrentUser, session: DbSession
+) -> None:
     """Delete one user-owned history entry."""
     try:
         await AsyncHistoryService(session).delete(entry_id, user.id)
     except ValueError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(error)
+        ) from error
 
 
 @router.delete("", status_code=status.HTTP_204_NO_CONTENT)
@@ -52,7 +60,9 @@ async def regenerate_history_entry(
     try:
         return await AsyncHistoryService(session).clone(entry_id, user.id)
     except ValueError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(error)
+        ) from error
 
 
 @router.post("/{entry_id}/clone", response_model=HistoryEntryResponse)
@@ -63,4 +73,6 @@ async def clone_history_entry(
     try:
         return await AsyncHistoryService(session).clone(entry_id, user.id)
     except ValueError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(error)
+        ) from error

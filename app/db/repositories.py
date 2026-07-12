@@ -19,7 +19,9 @@ class UserRepository:
         return await self._session.get(User, user_id)
 
     async def get_by_email(self, email: str) -> User | None:
-        result = await self._session.execute(select(User).where(User.email == email.lower()))
+        result = await self._session.execute(
+            select(User).where(User.email == email.lower())
+        )
         return result.scalar_one_or_none()
 
     async def create(self, user: User) -> User:
@@ -74,7 +76,9 @@ class GenerationHistoryRepository:
         )
         return list(result.scalars())
 
-    async def get_for_user(self, entry_id: UUID, user_id: UUID) -> GenerationHistory | None:
+    async def get_for_user(
+        self, entry_id: UUID, user_id: UUID
+    ) -> GenerationHistory | None:
         result = await self._session.execute(
             select(GenerationHistory).where(
                 GenerationHistory.id == entry_id,
@@ -83,7 +87,9 @@ class GenerationHistoryRepository:
         )
         return result.scalar_one_or_none()
 
-    async def create(self, entry: GenerationHistory, saved: SavedDataset) -> GenerationHistory:
+    async def create(
+        self, entry: GenerationHistory, saved: SavedDataset
+    ) -> GenerationHistory:
         self._session.add_all([entry, saved])
         await self._session.commit()
         await self._session.refresh(entry)
@@ -120,19 +126,25 @@ class TemplateRepository:
 
     async def list_for_user(self, user_id: UUID) -> list[Template]:
         result = await self._session.execute(
-            select(Template).where(Template.user_id == user_id).order_by(Template.updated_at.desc())
+            select(Template)
+            .where(Template.user_id == user_id)
+            .order_by(Template.updated_at.desc())
         )
         return list(result.scalars())
 
     async def get_for_user(self, template_id: UUID, user_id: UUID) -> Template | None:
         result = await self._session.execute(
-            select(Template).where(Template.id == template_id, Template.user_id == user_id)
+            select(Template).where(
+                Template.id == template_id, Template.user_id == user_id
+            )
         )
         return result.scalar_one_or_none()
 
     async def get_by_name(self, user_id: UUID, name: str) -> Template | None:
         result = await self._session.execute(
-            select(Template).where(Template.user_id == user_id, Template.name.ilike(name))
+            select(Template).where(
+                Template.user_id == user_id, Template.name.ilike(name)
+            )
         )
         return result.scalar_one_or_none()
 

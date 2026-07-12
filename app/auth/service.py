@@ -32,7 +32,9 @@ class AuthService:
         self._refresh_tokens = RefreshTokenRepository(session)
         self._settings = settings or get_settings()
 
-    async def register(self, payload: RegistrationRequest) -> tuple[User, TokenResponse]:
+    async def register(
+        self, payload: RegistrationRequest
+    ) -> tuple[User, TokenResponse]:
         if await self._users.get_by_email(payload.email):
             raise ValueError("an account with this email already exists")
         user = User(
@@ -53,7 +55,9 @@ class AuthService:
 
     async def issue_tokens(self, user: User) -> TokenResponse:
         now = datetime.now(UTC)
-        access_expires = now + timedelta(minutes=self._settings.access_token_expire_minutes)
+        access_expires = now + timedelta(
+            minutes=self._settings.access_token_expire_minutes
+        )
         refresh_expires = now + timedelta(days=self._settings.refresh_token_expire_days)
         refresh_id = uuid4().hex
         access_token = self._encode(
@@ -66,10 +70,17 @@ class AuthService:
             }
         )
         refresh_token = self._encode(
-            {"sub": str(user.id), "type": "refresh", "jti": refresh_id, "exp": refresh_expires}
+            {
+                "sub": str(user.id),
+                "type": "refresh",
+                "jti": refresh_id,
+                "exp": refresh_expires,
+            }
         )
         await self._refresh_tokens.create(
-            RefreshToken(user_id=user.id, token_id=refresh_id, expires_at=refresh_expires)
+            RefreshToken(
+                user_id=user.id, token_id=refresh_id, expires_at=refresh_expires
+            )
         )
         return TokenResponse(
             access_token=access_token,
@@ -131,7 +142,9 @@ class AuthService:
     def decode(self, token: str, expected_type: str) -> dict[str, object]:
         try:
             claims = jwt.decode(
-                token, self._settings.jwt_secret, algorithms=[self._settings.jwt_algorithm]
+                token,
+                self._settings.jwt_secret,
+                algorithms=[self._settings.jwt_algorithm],
             )
         except InvalidTokenError as error:
             raise AuthenticationError("token is invalid or expired") from error
@@ -140,7 +153,9 @@ class AuthService:
         return claims
 
     def _encode(self, claims: dict[str, object]) -> str:
-        return jwt.encode(claims, self._settings.jwt_secret, algorithm=self._settings.jwt_algorithm)
+        return jwt.encode(
+            claims, self._settings.jwt_secret, algorithm=self._settings.jwt_algorithm
+        )
 
     @staticmethod
     def hash_password(password: str) -> str:

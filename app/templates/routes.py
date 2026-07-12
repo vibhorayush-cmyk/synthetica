@@ -19,16 +19,22 @@ router = APIRouter(prefix="/templates", tags=["templates"])
 
 
 @router.get("", response_model=list[TemplateResponse])
-async def list_templates(user: CurrentUser, session: DbSession) -> list[TemplateResponse]:
+async def list_templates(
+    user: CurrentUser, session: DbSession
+) -> list[TemplateResponse]:
     return await AsyncTemplateService(session).list(user.id)
 
 
 @router.get("/{template_id}", response_model=TemplateResponse)
-async def get_template(template_id: UUID, user: CurrentUser, session: DbSession) -> TemplateResponse:
+async def get_template(
+    template_id: UUID, user: CurrentUser, session: DbSession
+) -> TemplateResponse:
     try:
         return await AsyncTemplateService(session).get(template_id, user.id)
     except ValueError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(error)
+        ) from error
 
 
 @router.post("", response_model=TemplateResponse, status_code=status.HTTP_201_CREATED)
@@ -38,7 +44,9 @@ async def create_template(
     try:
         return await AsyncTemplateService(session).create(user.id, payload)
     except ValueError as error:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)) from error
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)
+        ) from error
 
 
 @router.put("/{template_id}", response_model=TemplateResponse)
@@ -48,15 +56,21 @@ async def update_template(
     try:
         return await AsyncTemplateService(session).update(template_id, user.id, payload)
     except ValueError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(error)
+        ) from error
 
 
 @router.delete("/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_template(template_id: UUID, user: CurrentUser, session: DbSession) -> None:
+async def delete_template(
+    template_id: UUID, user: CurrentUser, session: DbSession
+) -> None:
     try:
         await AsyncTemplateService(session).delete(template_id, user.id)
     except ValueError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(error)
+        ) from error
 
 
 @router.post("/generate/from-template/{template_id}", response_model=GenerateResponse)
@@ -70,7 +84,9 @@ async def generate_from_template(
         payload = await service.generate_request(template_id, user.id)
         generated = await asyncio.to_thread(get_generation_service().generate, payload)
     except ValueError as error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(error)
+        ) from error
     response = GenerateResponse(
         download_url=str(
             request.url_for(
