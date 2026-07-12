@@ -33,7 +33,10 @@ class PluginRegistry:
 
     def list_frontend_metadata(self) -> list[dict[str, object]]:
         """Return frontend contracts for all registered plugins."""
-        return [self._plugins[plugin_id].frontend_metadata() for plugin_id in self.list_ids()]
+        return [
+            self._plugins[plugin_id].frontend_metadata()
+            for plugin_id in self.list_ids()
+        ]
 
 
 def create_default_plugin_registry() -> PluginRegistry:

@@ -1,0 +1,11 @@
+"use client";
+import { AppSidebar } from "@/components/app-sidebar";
+import { ProtectedPage } from "@/components/protected-page";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { useAuth } from "@/components/auth-provider";
+import { updateProfile } from "@/services/auth-service";
+import { useState } from "react";
+
+export default function ProfilePage() { const { user, refreshUser } = useAuth(); const [message, setMessage] = useState<string | null>(null); async function submit(data: FormData) { try { const currentPassword = String(data.get("current_password") || ""); const password = String(data.get("password") || ""); await updateProfile({ full_name: String(data.get("full_name")), avatar_url: String(data.get("avatar_url")) || undefined, ...(password ? { current_password: currentPassword, password } : {}) }); await refreshUser(); setMessage("Profile updated."); } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to update profile."); } } return <ProtectedPage><main className="min-h-screen lg:grid lg:grid-cols-[250px_1fr]"><AppSidebar /><section className="p-6 sm:p-10"><div className="mx-auto max-w-2xl"><header className="mb-8 flex justify-between"><div><p className="text-sm font-medium text-brand-600">Account</p><h1 className="mt-2 text-3xl font-bold">Your profile</h1></div><ThemeToggle /></header><Card><form action={submit} className="space-y-4"><label className="block text-sm font-medium">Name<input name="full_name" defaultValue={user?.full_name} className="input mt-1.5" /></label><label className="block text-sm font-medium">Avatar URL<input name="avatar_url" defaultValue={user?.avatar_url ?? ""} className="input mt-1.5" /></label><div className="grid gap-4 border-t pt-4 sm:grid-cols-2"><label className="block text-sm font-medium">Current password<input name="current_password" type="password" className="input mt-1.5" /></label><label className="block text-sm font-medium">New password<input name="password" type="password" className="input mt-1.5" placeholder="Optional" /></label></div><p className="text-sm text-slate-500">{user?.email}</p>{message && <p className="text-sm text-brand-700">{message}</p>}<Button>Save profile</Button></form></Card></div></section></main></ProtectedPage>; }

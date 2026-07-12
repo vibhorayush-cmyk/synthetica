@@ -35,9 +35,13 @@ def test_metrics_aggregate_generation_statistics() -> None:
     assert local_metrics.snapshot() == {
         "generation_count": 1,
         "generation_failures": 1,
+        "generation_timeouts": 0,
         "average_generation_duration_ms": 20.0,
         "total_export_duration_ms": 5.0,
         "peak_memory_bytes": 1_024,
+        "expired_exports_removed": 0,
+        "capacity_exports_removed": 0,
+        "export_storage_bytes": 0,
     }
 
 

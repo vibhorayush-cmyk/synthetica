@@ -55,8 +55,9 @@ Screenshots are repository placeholders until captured from a running local app.
 | Data-quality engine | Optional missing values, duplicates, outliers, format issues, and referential noise |
 | Export service | CSV tables, Excel data dictionary, README, challenge artifacts, and ZIP packaging |
 | Challenge and learning packs | Case studies, tasks, requirements, and PDF challenge material |
-| Dataset templates | JSON-backed saved configurations and generate-from-template workflow |
-| Generation history | JSON-backed history entries with clone, regenerate, download, and delete actions |
+| Dataset templates | User-owned PostgreSQL saved configurations and generate-from-template workflow |
+| Generation history | User-owned PostgreSQL history with clone, regenerate, download, and delete actions |
+| Authentication | JWT access/refresh tokens, password hashing, profiles, and protected workflows |
 | Plugin SDK | Discovery, registration, validation, metadata, and generation contracts |
 | Schema designer | Browser-based schema composition and JSON preview |
 | Frontend workspace | Metadata-driven Next.js configuration experience |
@@ -114,7 +115,7 @@ or `powerbi_tasks.md` files.
 | Area | Technologies |
 | --- | --- |
 | Frontend | Next.js, React, TypeScript, Tailwind CSS, TanStack Query, React Hook Form, Zod |
-| Backend | FastAPI, Pydantic, Pandas, NumPy, Faker, OpenPyXL |
+| Backend | FastAPI, Pydantic, SQLAlchemy 2 async, Alembic, PostgreSQL, Pandas, NumPy, Faker, OpenPyXL |
 | Testing | Pytest, TypeScript typecheck, frontend production build |
 | Deployment direction | Docker, Vercel, Render or Railway *(planned)* |
 
@@ -128,8 +129,10 @@ app/                    FastAPI application and domain packages
   data_quality/         Intentional quality-rule engine
   exporters/            CSV, Excel, ZIP, and documentation export
   challenges/           Learning-pack generation and rendering
-  templates/            JSON-backed dataset template management
-  history/              JSON-backed generation history
+  auth/                 JWT authentication, password, and user dependencies
+  db/                   Async SQLAlchemy models, sessions, and repositories
+  templates/            User-owned dataset template management
+  history/              User-owned generation history
   schema_designer/      Schema parsing, validation, and generation helpers
   services/             Generation orchestration
 frontend/               Next.js App Router application
@@ -147,6 +150,8 @@ README.md               Repository overview
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
+cp .env.example .env
+alembic upgrade head
 python -m uvicorn app.main:app --reload
 ```
 
@@ -162,13 +167,108 @@ npm run dev
 - Backend: <http://localhost:8000>
 - Swagger: <http://localhost:8000/api/v1/docs>
 
+### PostgreSQL with Docker
+
+The included Compose file starts PostgreSQL, applies Alembic migrations before
+the API starts, and runs the frontend:
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+For a local PostgreSQL instance, create the `synthetica` database and set
+`DATABASE_URL=postgresql+asyncpg://USER:PASSWORD@localhost:5432/synthetica`.
+
+### Database migrations
+
+```bash
+# Apply the complete SaaS schema
+alembic upgrade head
+
+# Create a migration after changing SQLAlchemy mappings
+alembic revision --autogenerate -m "describe schema change"
+
+# Inspect the current revision
+alembic current
+```
+
+## Authentication flow
+
+1. `POST /auth/register` validates a unique email and strong password, hashes
+   the password with bcrypt, then returns an access/refresh pair.
+2. The frontend stores tokens in browser local storage and supplies the access
+   token as `Authorization: Bearer <token>`.
+3. Protected generation, templates, history, and profile endpoints resolve the
+   current active user through dependency injection.
+4. `POST /auth/refresh` rotates a persisted refresh-token identifier. Logout
+   revokes that identifier. Password-reset token delivery is mocked for now.
+
+Swagger exposes the HTTP Bearer **Authorize** control. Paste an access token
+there to call protected endpoints interactively.
+
+### Added SaaS API endpoints
+
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /auth/register` | Create an account and initial token pair |
+| `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout` | JWT lifecycle |
+| `POST /auth/password-reset/request`, `POST /auth/password-reset/confirm` | Mocked password-reset token flow |
+| `GET /auth/me`, `GET /users/me`, `PATCH /users/me` | Current-user profile and account changes |
+| `/generate`, `/templates/*`, `/history/*` | Existing endpoints, now authenticated and user-scoped |
+
+## Database schema
+
+```mermaid
+erDiagram
+  USERS ||--o{ GENERATION_HISTORY : owns
+  USERS ||--o{ TEMPLATES : owns
+  USERS ||--o{ SAVED_DATASETS : owns
+  USERS ||--o{ REFRESH_TOKENS : receives
+  GENERATION_HISTORY ||--|| SAVED_DATASETS : retains
+  USERS {
+    uuid id PK
+    string email UK
+    string role
+  }
+  GENERATION_HISTORY {
+    uuid id PK
+    uuid user_id FK
+    string download_filename
+    int dataset_size
+    string status
+  }
+  TEMPLATES {
+    uuid id PK
+    uuid user_id FK
+    json configuration
+  }
+  SAVED_DATASETS {
+    uuid id PK
+    uuid history_id FK
+    string filename
+  }
+```
+
+## SaaS environment variables
+
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | PostgreSQL async SQLAlchemy connection URL |
+| `SECRET_KEY` | Long random JWT signing secret; never use the example value in production |
+| `JWT_ALGORITHM` | JWT signing algorithm (default `HS256`) |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Access-token lifetime |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | Refresh-token lifetime |
+| `PASSWORD_RESET_EXPIRE_MINUTES` | Mocked reset-token lifetime |
+
 ## Example API requests
 
-### Retail
+### Retail (authenticated)
 
 ```bash
 curl -X POST http://localhost:8000/generate \
   -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer ACCESS_TOKEN' \
   -d '{
     "industry": "retail",
     "scenario": "black_friday",
@@ -183,11 +283,12 @@ curl -X POST http://localhost:8000/generate \
   }'
 ```
 
-### Banking
+### Banking (authenticated)
 
 ```bash
 curl -X POST http://localhost:8000/generate \
   -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer ACCESS_TOKEN' \
   -d '{
     "industry": "banking",
     "scenario": "fraud_spike",
@@ -237,9 +338,8 @@ it discoverable. See [Plugin development](docs/plugins.md).
 data-quality engine, schema designer, challenge packs, plugin framework, and
 frontend workspace.
 
-**Planned:** Docker deployment, cloud deployment, PostgreSQL persistence,
-object storage, authentication, Healthcare, Supply Chain, and AI schema
-generation.
+**Planned:** Object storage, verification-email delivery, Healthcare, Supply
+Chain, and AI schema generation.
 
 ## Contributing
 

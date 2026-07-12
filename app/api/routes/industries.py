@@ -50,14 +50,35 @@ def _healthcare_metadata() -> dict[str, object]:
         "color": "#be123c",
         "configuration_fields": fields,
         "supported_scenarios": ["none", "seasonal_surge", "staff_shortage"],
-        "supported_templates": ["Clinical Operations", "Patient Access", "Claims Analysis"],
+        "supported_templates": [
+            "Clinical Operations",
+            "Patient Access",
+            "Claims Analysis",
+        ],
         "kpis": ["Wait Time", "Readmission Rate", "Claim Cost", "Appointment Volume"],
-        "dashboard_suggestions": ["Patient access", "Hospital capacity", "Claims cost monitoring"],
+        "dashboard_suggestions": [
+            "Patient access",
+            "Hospital capacity",
+            "Claims cost monitoring",
+        ],
         "challenge_types": ["Care Delivery Review", "Claims Operations Investigation"],
-        "field_layout": [{"title": "Dataset Size", "fields": [field["key"] for field in fields], "columns": 2}],
+        "field_layout": [
+            {
+                "title": "Dataset Size",
+                "fields": [field["key"] for field in fields],
+                "columns": 2,
+            }
+        ],
         "generation_available": False,
     }
 
 
 def _number_field(key: str, label: str, default: int) -> dict[str, object]:
-    return {"key": key, "label": label, "type": "number", "default": default, "minimum": 1, "maximum": 1_000_000}
+    return {
+        "key": key,
+        "label": label,
+        "type": "number",
+        "default": default,
+        "minimum": 1,
+        "maximum": 1_000_000,
+    }
