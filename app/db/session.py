@@ -13,8 +13,8 @@ from sqlalchemy.ext.asyncio import (
 from app.core.settings import get_settings
 
 
-def _async_database_url(database_url: str) -> str:
-    """Normalize a development SQLite URL to SQLAlchemy's async dialect."""
+def to_async_database_url(database_url: str) -> str:
+    """Normalize supported SQLAlchemy URLs to their async dialects."""
     if database_url.startswith("sqlite:///") and not database_url.startswith(
         "sqlite+aiosqlite:///"
     ):
@@ -28,7 +28,7 @@ def _async_database_url(database_url: str) -> str:
 def get_engine() -> AsyncEngine:
     """Create one async engine per process."""
     return create_async_engine(
-        _async_database_url(get_settings().database_url), pool_pre_ping=True
+        to_async_database_url(get_settings().database_url), pool_pre_ping=True
     )
 
 

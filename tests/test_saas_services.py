@@ -16,10 +16,21 @@ from app.auth.schemas import (
 from app.auth.service import AuthenticationError, AuthService
 from app.core.settings import Settings
 from app.db.base import Base
+from app.db.session import to_async_database_url
 from app.history.database_service import AsyncHistoryService
 from app.models.generation import GenerateRequest, GenerateResponse
 from app.templates.database_service import AsyncTemplateService
 from app.templates.schemas import TemplateCreate, TemplateUpdate
+
+
+def test_database_urls_use_async_drivers() -> None:
+    """Render and SQLite URLs use drivers compatible with async sessions."""
+    assert to_async_database_url("postgresql://user:password@db:5432/synthetica") == (
+        "postgresql+asyncpg://user:password@db:5432/synthetica"
+    )
+    assert to_async_database_url("sqlite:///synthetica.db") == (
+        "sqlite+aiosqlite:///synthetica.db"
+    )
 
 
 def test_async_saas_services_cover_security_and_user_owned_records(tmp_path) -> None:
